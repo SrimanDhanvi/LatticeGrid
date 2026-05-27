@@ -1,64 +1,219 @@
-# LatticeGrid (V0)
+# LatticeGrid
 
-LatticeGrid is an early-stage prototype exploring
-local-first, device-to-device cooperation without cloud dependency.
+**Capability-Aware Device-to-Device Resource Sharing System**
 
-This repository contains **V0**, a proof-of-concept Android application
-that validates hotspot-based data sharing using a device-as-server model.
+LatticeGrid is a local distributed computation framework designed to intelligently offload computational workloads between nearby devices based on performance capability and network conditions.
 
----
+The system dynamically decides whether a task should execute locally or on a connected device by evaluating:
 
-## What V0 Does
+- Local compute capability
+- Remote compute capability
+- Network overhead / latency
 
-- Uses a local Wi-Fi hotspot for device-to-device networking
-- Allows a device to act as a local server
-- Enables nearby devices to download files directly
-- Runs transfers in the background using Kotlin coroutines
-- Includes basic battery-aware behavior (non-hosting below threshold)
+LatticeGrid aims to reduce execution time and improve performance using adaptive task orchestration across heterogeneous devices.
 
 ---
 
-## What V0 Does NOT Do (Yet)
+# Overview
 
-- No automatic host election
-- No encryption
-- No storage pooling
-- No compute sharing
-- No cloud services
+Modern households and small teams often own multiple smart devices with unused computational resources.
 
-These are intentionally deferred to later versions.
+LatticeGrid explores how nearby devices can cooperatively execute workloads more efficiently through intelligent task offloading while remaining fully local and privacy-preserving.
 
----
+The current version demonstrates:
 
-## Architecture (V0)
-
-- Network: Local Wi-Fi hotspot
-- Server: Device itself (not external)
-- Clients: Nearby devices connected to hotspot
-- Communication: TCP sockets
-- Storage: App-internal storage
+- Device profiling
+- Capability exchange
+- Predictive execution selection
+- Local network task offloading
 
 ---
 
-## Status
+# Features
 
-V0 is **working and validated**.
-File transfer over hotspot has been successfully demonstrated.
+## Adaptive Task Offloading
+Automatically predicts whether local execution or remote execution will be faster.
 
-This version focuses on feasibility, not optimization or scale.
+## Device Profiling
+Each device benchmarks itself and stores an average compute profile locally.
+
+## Local-Only Architecture
+No cloud infrastructure required.
+
+## Lightweight Communication
+Uses NanoHTTPD for local device communication.
+
+## Predictive Scheduling
+Makes execution decisions before task execution.
+
+## Capability-Aware Execution
+Selects execution location based on measured performance rather than manual selection.
 
 ---
 
-## Roadmap (High-Level)
+# Current Architecture (V1)
 
-- V1: Intelligent, battery-aware role selection
-- V2: Secure mesh and storage sharing
-- V3: Resource federation (task offloading)
-- V4: OS / platform integration
+## Components
+
+### DeviceProfiler
+Responsible for:
+
+- Running benchmark tests
+- Computing average execution time
+- Storing device performance profile
 
 ---
 
-## Note
+### LocalServer
+Lightweight HTTP server running on each device.
 
-This is an experimental prototype.
-Code structure may change significantly in future versions.
+Endpoints:
+
+| Endpoint | Description |
+|---|---|
+| `/profile` | Returns stored average compute capability |
+| `/task` | Executes computation workload |
+
+---
+
+### Smart Decision Engine
+Determines whether to:
+
+- Execute locally
+- Offload to remote device
+
+Decision factors:
+
+- Local benchmark average
+- Remote benchmark average
+- Network round-trip overhead
+
+---
+
+### NetworkUtils
+Handles:
+
+- Gateway IP retrieval
+- Local network utilities
+- Connectivity support
+
+---
+
+# Execution Flow
+
+## Example Scenario
+
+Phone-A connects to Phone-B hotspot.
+
+LatticeGrid then:
+
+1. Retrieves Phone-A local compute profile
+2. Fetches Phone-B compute profile
+3. Measures network overhead
+4. Predicts total offload execution cost
+5. Selects optimal execution location
+6. Executes task accordingly
+
+---
+
+# Experimental Results
+
+| Execution Mode | Time |
+|---|---|
+| Local Execution | 9921 ms |
+| Remote Offloaded Execution | 2057 ms |
+
+### Performance Gain
+
+- ~79% faster
+- ~4.8x speedup
+
+The system can also intelligently determine when local execution is more efficient and avoid unnecessary offloading.
+
+---
+
+# Why LatticeGrid Is Intelligent
+
+LatticeGrid is not a simple remote execution system.
+
+It:
+
+- Builds persistent device performance profiles
+- Exchanges lightweight capability metadata
+- Predicts execution cost before task execution
+- Minimizes total execution time dynamically
+- Avoids unnecessary benchmarking during runtime
+
+This creates a capability-aware adaptive distributed computation system.
+
+---
+
+# Current Scope (V1)
+
+- Two-device system
+- Matrix multiplication benchmark workload
+- Average-based capability modeling
+- Network latency estimation
+- Predictive execution selection
+- Local hotspot-based communication
+
+---
+
+# Future Expansion
+
+Planned future work includes:
+
+- Multi-device mesh support
+- CPU/RAM-aware capability modeling
+- Battery-aware scheduling
+- Dynamic load balancing
+- Distributed task partitioning
+- Performance curve modelling
+- Video processing workloads
+- Compression workloads
+- AI processing workloads
+
+---
+
+# Long-Term Vision
+
+LatticeGrid aims to evolve into a local distributed compute layer for personal devices.
+
+The goal is to allow nearby devices to cooperatively execute heavy workloads while remaining:
+
+- Local-first
+- Privacy-preserving
+- Cloud-independent
+- Capability-aware
+
+Future versions will explore creator-focused workloads such as video processing acceleration.
+
+---
+
+# Tech Stack
+
+- Kotlin
+- Android
+- NanoHTTPD
+- Coroutines
+- SharedPreferences
+
+---
+
+# Project Status
+
+Current Status: **Prototype / Research Validation (V1)**
+
+LatticeGrid V1 validates the feasibility of adaptive local task offloading between heterogeneous mobile devices.
+
+---
+
+# Author
+
+**Sriman Dhanvi Adepu**
+
+---
+
+# License
+
+Currently unlicensed.

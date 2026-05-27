@@ -17,7 +17,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,10 +32,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
 import com.example.latticegrid.ui.theme.LatticeGridTheme
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,8 +57,10 @@ class MainActivity : ComponentActivity() {
 fun MainUI() {
 
     val context = LocalContext.current
-    var statusText by remember() { mutableStateOf("") }
-    var downStatisText by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    var statusText by remember { mutableStateOf("") }
+    var resultNum by remember { mutableLongStateOf(0L) }
+    var offloadStatusText by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -70,18 +77,51 @@ fun MainUI() {
                 .fillMaxSize()
                 .padding(padding)
         ) {
+
+//            Button (
+//                onClick = {
+//                    CoroutineScope(Dispatchers.Default).launch {
+//
+//                        val benchmark = MatrixBenchmark()
+//                        val result = benchmark.runBenchmark(800)
+//
+//                        withContext(Dispatchers.Main) {
+//                            resultText =
+//                                "Matrix Size: ${result.matrixSize}\nTime: ${result.executionTimeMs} ms"
+//                        }
+//                    }
+
+//                },
+//                modifier = Modifier
+//                    .padding(6.dp)
+//            ) {
+//                Text(
+//                    "Execute Program",
+//                    Modifier
+//                        .padding(12.dp)
+//                )
+//            }
+
+            LaunchedEffect(Unit) {
+                scope.launch {
+                    val profiler = DeviceProfiler(context)
+                    resultNum = profiler.getOrCreateProfile()
+                }
+            }
+
             Text(
-                "Battery Percentage",
+                "Device Power:",
                 Modifier
                     .padding(12.dp),
                 fontSize = 20.sp
             )
             Text(
-                getBatteryLevel(context).toString(),
+                "$resultNum",
                 Modifier
                     .padding(12.dp),
                 fontSize = 30.sp
             )
+
             Button(
                 onClick = {
                     when (val result = startHosting(context)) {
@@ -118,23 +158,22 @@ fun MainUI() {
 
             Button(
                 onClick = {
-                        scope.launch(Dispatchers.IO) {
-                            val result = downloadLocally(context)
-                            withContext(Dispatchers.Main) {
-                                downStatisText = result
-                            }
-                        }
+                    scope.launch {
+                        offloadStatusText = offloadLocally(context, resultNum)
+                    }
                 },
                 modifier = Modifier
                     .padding(6.dp)
-            ) { Text(
-                "Download",
-                Modifier
-                    .padding(12.dp)
-            )}
+            ) {
+                Text(
+                    "Start Task",
+                    Modifier
+                        .padding(12.dp)
+                )
+            }
 
             Text(
-                text = "Download Status: $downStatisText",
+                text = "Task Status: $offloadStatusText",
                 Modifier
                     .padding(12.dp)
             )
@@ -166,53 +205,47 @@ fun startHosting(context: Context): HostingResult {
         return HostingResult.HotspotDisabled
     }
 
-    val dir = context.filesDir
-    File(dir, "sample.txt").writeText("Hello from LatticeGrid")
-
-    server = LocalServer(dir)
+    server = LocalServer(context)
     server.start()
 
     return HostingResult.Started
 }
 
-fun downloadLocally(context: Context): String {
+suspend fun offloadLocally(context: Context, localTime : Long): String {
+
+    val profiler = DeviceProfiler(context)
 
     val ip = getGatewayIp(context)
         ?: return "Failed: Not connected to hotspot"
 
-    val outputFile = File(
-        context.filesDir,
-        "received_from_latticegrid.txt"
-    )
+    val (remoteTime,networkOverhead) = profiler.fetchRemoteProfile(ip)
+
+    val predictedOffload = remoteTime + networkOverhead
+
+    if (localTime <= predictedOffload) {
+        val result = runHere(context)
+        return """
+            Local Device Has More power.
+            Ran Locally.
+            $result
+        """.trimIndent()
+    }
 
     return try {
-        downloadFile(
-            serverIp = ip,
-            outputFile = outputFile
-        )
-        "Successfully Downloaded"
+        var result : String = offload(ip)
+        result
     } catch (e: Exception) {
-        "Download Failed: ${e.message}"
+        "Offload Failed: ${e.message}"
     }
 }
 
+fun runHere(context: Context): String {
+        val benchmark = MatrixBenchmark()
+        val result = benchmark.runBenchmark(800)
 
-fun getGatewayIp(context: Context): String? {
-    val wifiManager = context.applicationContext
-        .getSystemService(Context.WIFI_SERVICE) as WifiManager
-
-    val dhcpInfo = wifiManager.dhcpInfo
-    return dhcpInfo?.gateway?.let { intToIp(it) }
+        return "Matrix Size: ${result.matrixSize}\nTime: ${result.executionTimeMs} ms"
 }
 
-fun intToIp(ip: Int): String {
-    return listOf(
-        ip and 0xff,
-        ip shr 8 and 0xff,
-        ip shr 16 and 0xff,
-        ip shr 24 and 0xff
-    ).joinToString(".")
-}
 
 
 
